@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traceability System</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>Traceability System</h1>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+            <nav id="mainNav">
+                <a href="#" data-page="neofly" class="nav-link active">Neofly Entry</a>
+                <a href="#" data-page="neobolt" class="nav-link">Neobolt Entry</a>
+                <a href="#" data-page="records" class="nav-link">Records</a>
+                <a href="#" data-page="reports" class="nav-link">Reports</a>
+                <a href="#" data-page="dashboard" class="nav-link">Dashboard</a>
+                <a href="#" data-page="admin" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="appContent">
+        <!-- Neofly Entry Page -->
+        <section id="page-neofly" class="page active">
+            <h2>Neofly - Vehicle Inspection Entry</h2>
+            <form id="neoflyForm" class="entry-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="nf-orderNo">Order No</label>
+                    <input type="text" id="nf-orderNo" required placeholder="Scan or enter order number">
+                </div>
+                <div class="form-group">
+                    <label for="nf-frameNo">Frame / Chassis Number</label>
+                    <input type="text" id="nf-frameNo" required placeholder="Scan or enter frame/chassis number">
+                </div>
+                <div class="form-group">
+                    <label for="nf-inspector">Person Who Inspected</label>
+                    <input type="text" id="nf-inspector" required placeholder="Enter inspector name">
+                </div>
+                <div class="form-group">
+                    <label for="nf-timestamp">Timestamp of Work Completion</label>
+                    <input type="datetime-local" id="nf-timestamp" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Entry</button>
+            </form>
+            <div id="neofly-confirmation" class="confirmation hidden"></div>
+        </section>
+
+        <!-- Neobolt Entry Page -->
+        <section id="page-neobolt" class="page">
+            <h2>Neobolt - Vehicle Inspection Entry</h2>
+            <form id="neoboltForm" class="entry-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="nb-orderNo">Order No</label>
+                    <input type="text" id="nb-orderNo" required placeholder="Scan or enter order number">
+                </div>
+                <div class="form-group">
+                    <label for="nb-frameNo">Frame / Chassis Serial No</label>
+                    <input type="text" id="nb-frameNo" required placeholder="Scan or enter frame/chassis serial number">
+                </div>
+                <div class="form-group">
+                    <label for="nb-batteryNo">Battery Serial No</label>
+                    <input type="text" id="nb-batteryNo" required placeholder="Scan or enter battery serial number">
+                </div>
+                <div class="form-group">
+                    <label for="nb-chargerNo">Battery Charger Serial No</label>
+                    <input type="text" id="nb-chargerNo" required placeholder="Scan or enter charger serial number">
+                </div>
+                <div class="form-group">
+                    <label for="nb-motorNo">Motor Serial No</label>
+                    <input type="text" id="nb-motorNo" required placeholder="Scan or enter motor serial number">
+                </div>
+                <div class="form-group">
+                    <label for="nb-inspector">Person Who Inspected</label>
+                    <input type="text" id="nb-inspector" required placeholder="Enter inspector name">
+                </div>
+                <div class="form-group">
+                    <label for="nb-timestamp">Timestamp of Work Completion</label>
+                    <input type="datetime-local" id="nb-timestamp" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Entry</button>
+            </form>
+            <div id="neobolt-confirmation" class="confirmation hidden"></div>
+        </section>
+
+        <!-- Records Page -->
+        <section id="page-records" class="page">
+            <h2>All Records</h2>
+            <div class="controls-bar">
+                <select id="records-type-filter">
+                    <option value="all">All Types</option>
+                    <option value="neofly">Neofly Only</option>
+                    <option value="neobolt">Neobolt Only</option>
+                </select>
+                <input type="text" id="records-search" placeholder="Search by order no, frame no, inspector...">
+            </div>
+            <div class="table-wrapper">
+                <table id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Order No</th>
+                            <th>Frame/Chassis No</th>
+                            <th>Battery No</th>
+                            <th>Charger No</th>
+                            <th>Motor No</th>
+                            <th>Inspector</th>
+                            <th>Timestamp</th>
+                            <th>QR Code</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody"></tbody>
+                </table>
+            </div>
+            <p id="noRecordsMsg" class="hidden">No records found.</p>
+        </section>
+
+        <!-- Reports Page -->
+        <section id="page-reports" class="page">
+            <h2>Reports</h2>
+            <div class="report-filters">
+                <div class="filter-group">
+                    <h3>Filter by Order Number Range</h3>
+                    <div class="filter-row">
+                        <input type="text" id="rpt-orderFrom" placeholder="From order no">
+                        <input type="text" id="rpt-orderTo" placeholder="To order no">
+                        <button class="btn btn-secondary" id="filterByOrder">Apply</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <h3>Filter by Date Range</h3>
+                    <div class="filter-row">
+                        <input type="date" id="rpt-dateFrom">
+                        <input type="date" id="rpt-dateTo">
+                        <button class="btn btn-secondary" id="filterByDate">Apply</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <h3>Filter by Inspector</h3>
+                    <div class="filter-row">
+                        <select id="rpt-inspector">
+                            <option value="">Select inspector</option>
+                        </select>
+                        <button class="btn btn-secondary" id="filterByPerson">Apply</button>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-secondary" id="clearFilters">Clear Filters</button>
+                    <button class="btn btn-primary" id="downloadCSV">Download CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="reportTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Order No</th>
+                            <th>Frame/Chassis No</th>
+                            <th>Battery No</th>
+                            <th>Charger No</th>
+                            <th>Motor No</th>
+                            <th>Inspector</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportBody"></tbody>
+                </table>
+            </div>
+            <p id="noReportMsg" class="hidden">No records match the selected filters.</p>
+        </section>
+
+        <!-- Dashboard Page -->
+        <section id="page-dashboard" class="page">
+            <h2>Performance Dashboard</h2>
+            <div class="dashboard-filters">
+                <div class="filter-row">
+                    <select id="dash-inspector">
+                        <option value="">All Inspectors</option>
+                    </select>
+                    <input type="date" id="dash-dateFrom">
+                    <input type="date" id="dash-dateTo">
+                    <button class="btn btn-secondary" id="refreshDashboard">Refresh</button>
+                </div>
+            </div>
+            <div class="dashboard-cards" id="dashboardCards"></div>
+            <div class="dashboard-detail">
+                <h3>Daily Breakdown</h3>
+                <div class="table-wrapper">
+                    <table id="dashboardTable">
+                        <thead>
+                            <tr>
+                                <th>Inspector</th>
+                                <th>Date</th>
+                                <th>Neofly Count</th>
+                                <th>Neobolt Count</th>
+                                <th>Total Inspected</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Page -->
+        <section id="page-admin" class="page">
+            <h2>Admin - Edit Records</h2>
+            <div id="adminLoginSection">
+                <div class="admin-login-box">
+                    <h3>Admin Authentication Required</h3>
+                    <p>Enter the admin password to access edit functionality.</p>
+                    <div class="form-group">
+                        <label for="adminPassword">Password</label>
+                        <input type="password" id="adminPassword" placeholder="Enter admin password">
+                    </div>
+                    <button class="btn btn-primary" id="adminLoginBtn">Login</button>
+                    <p id="adminError" class="error-text hidden">Incorrect password.</p>
+                </div>
+            </div>
+            <div id="adminPanel" class="hidden">
+                <div class="admin-bar">
+                    <span class="admin-badge">Admin Access</span>
+                    <button class="btn btn-secondary" id="adminLogout">Logout</button>
+                    <button class="btn btn-secondary" id="changePasswordBtn">Change Password</button>
+                </div>
+                <div id="changePasswordSection" class="hidden">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" placeholder="Current password">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" placeholder="New password">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmNewPassword">Confirm New Password</label>
+                        <input type="password" id="confirmNewPassword" placeholder="Confirm new password">
+                    </div>
+                    <button class="btn btn-primary" id="saveNewPassword">Save Password</button>
+                    <p id="passwordMsg" class="hidden"></p>
+                </div>
+                <h3>Search Record to Edit</h3>
+                <div class="filter-row">
+                    <input type="text" id="admin-search" placeholder="Enter order no or frame/chassis no">
+                    <button class="btn btn-secondary" id="adminSearchBtn">Search</button>
+                </div>
+                <div id="adminResults"></div>
+                <div id="editFormContainer" class="hidden">
+                    <h3>Edit Record</h3>
+                    <form id="editRecordForm" class="entry-form">
+                        <input type="hidden" id="edit-id">
+                        <div class="form-group">
+                            <label for="edit-orderNo">Order No</label>
+                            <input type="text" id="edit-orderNo" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-frameNo">Frame / Chassis No</label>
+                            <input type="text" id="edit-frameNo" required>
+                        </div>
+                        <div class="form-group edit-neobolt-field">
+                            <label for="edit-batteryNo">Battery Serial No</label>
+                            <input type="text" id="edit-batteryNo">
+                        </div>
+                        <div class="form-group edit-neobolt-field">
+                            <label for="edit-chargerNo">Battery Charger Serial No</label>
+                            <input type="text" id="edit-chargerNo">
+                        </div>
+                        <div class="form-group edit-neobolt-field">
+                            <label for="edit-motorNo">Motor Serial No</label>
+                            <input type="text" id="edit-motorNo">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-inspector">Inspector</label>
+                            <input type="text" id="edit-inspector" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-timestamp">Timestamp</label>
+                            <input type="datetime-local" id="edit-timestamp" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Traceability System &copy; 2026</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
