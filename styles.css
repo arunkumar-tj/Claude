@@ -685,6 +685,23 @@ td img {
     flex: 1;
 }
 
+.qr-modal-qr {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.qr-modal-qr img,
+.qr-modal-qr canvas {
+    width: 160px;
+    height: 160px;
+}
+
+.qr-print-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+}
+
 /* === Utilities === */
 .hidden {
     display: none !important;

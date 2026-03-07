@@ -195,7 +195,8 @@
     function showQRModal(record) {
         var product = getProductById(record.type);
         var typeName = product ? product.name : record.type;
-        var html = '';
+        var html = '<div id="qrModalPrintArea">';
+        html += '<div class="qr-modal-qr" id="qrModalQRImage"></div>';
         html += '<div class="qr-detail-row"><span class="qr-detail-label">Product</span><span class="qr-detail-value">' + esc(typeName) + '</span></div>';
         html += '<div class="qr-detail-row"><span class="qr-detail-label">Order No</span><span class="qr-detail-value">' + esc(record.orderNo) + '</span></div>';
         html += '<div class="qr-detail-row"><span class="qr-detail-label">Frame/Chassis No</span><span class="qr-detail-value">' + esc(record.frameNo) + '</span></div>';
@@ -206,7 +207,34 @@
         }
         html += '<div class="qr-detail-row"><span class="qr-detail-label">Inspector</span><span class="qr-detail-value">' + esc(record.inspector) + '</span></div>';
         html += '<div class="qr-detail-row"><span class="qr-detail-label">Timestamp</span><span class="qr-detail-value">' + formatDate(record.timestamp) + '</span></div>';
+        html += '</div>';
+        html += '<button class="btn btn-primary qr-print-btn" id="qrPrintBtn">Print QR Code</button>';
         qrModalBody.innerHTML = html;
+
+        // Generate larger QR for the modal
+        var qrContainer = document.getElementById('qrModalQRImage');
+        generateQR(record.orderNo, 160, function (el) {
+            qrContainer.appendChild(el);
+        });
+
+        // Print handler
+        document.getElementById('qrPrintBtn').addEventListener('click', function () {
+            var printArea = document.getElementById('qrModalPrintArea');
+            var printWin = window.open('', '_blank', 'width=400,height=600');
+            printWin.document.write('<html><head><title>QR Code - ' + esc(record.orderNo) + '</title>');
+            printWin.document.write('<style>body{font-family:Arial,sans-serif;padding:20px;text-align:center;}');
+            printWin.document.write('.qr-detail-row{display:flex;padding:6px 0;border-bottom:1px solid #ddd;font-size:14px;text-align:left;}');
+            printWin.document.write('.qr-detail-label{font-weight:600;min-width:140px;color:#555;}');
+            printWin.document.write('.qr-detail-value{flex:1;}.qr-modal-qr{margin:0 auto 16px;text-align:center;}');
+            printWin.document.write('.qr-modal-qr img{width:200px;height:200px;}</style></head><body>');
+            printWin.document.write('<h2>Neotrace - Order QR</h2>');
+            printWin.document.write(printArea.innerHTML);
+            printWin.document.write('</body></html>');
+            printWin.document.close();
+            printWin.focus();
+            printWin.print();
+        });
+
         qrModal.classList.remove('hidden');
     }
 
@@ -618,7 +646,7 @@
         var thead = document.querySelector('#reportTable thead tr');
         thead.innerHTML = '<th>Type</th><th>Order No</th><th>Frame/Chassis No</th>';
         dynFields.forEach(function (f) { thead.innerHTML += '<th>' + esc(f.label) + '</th>'; });
-        thead.innerHTML += '<th>Inspector</th><th>Timestamp</th>';
+        thead.innerHTML += '<th>Inspector</th><th>Timestamp</th><th>QR Code</th>';
 
         var tbody = document.getElementById('reportBody');
         var noMsg = document.getElementById('noReportMsg');
@@ -633,8 +661,18 @@
             var tr = document.createElement('tr');
             var html = '<td>' + esc(typeName) + '</td><td>' + esc(r.orderNo) + '</td><td>' + esc(r.frameNo) + '</td>';
             dynFields.forEach(function (f) { html += '<td>' + esc(r[f.key] || '-') + '</td>'; });
-            html += '<td>' + esc(r.inspector) + '</td><td>' + formatDate(r.timestamp) + '</td>';
+            html += '<td>' + esc(r.inspector) + '</td><td>' + formatDate(r.timestamp) + '</td><td class="qr-cell"></td>';
             tr.innerHTML = html;
+
+            var qrCell = tr.querySelector('.qr-cell');
+            (function (rec, cell) {
+                generateQR(rec.orderNo, 64, function (el) {
+                    el.style.cursor = 'pointer';
+                    el.title = 'Click to view details & print';
+                    el.addEventListener('click', function () { showQRModal(rec); });
+                    cell.appendChild(el);
+                });
+            })(r, qrCell);
             tbody.appendChild(tr);
         });
         currentReportData = records;
