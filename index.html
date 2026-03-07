@@ -13,8 +13,8 @@
             <h1>Neotrace</h1>
             <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
             <nav id="mainNav">
-                <a href="#" data-page="neofly" class="nav-link active">Neofly Entry</a>
-                <a href="#" data-page="neobolt" class="nav-link">Neobolt Entry</a>
+                <a href="#" data-page="products" class="nav-link">Products</a>
+                <a href="#" data-page="entry" class="nav-link active">Entry</a>
                 <a href="#" data-page="records" class="nav-link">Records</a>
                 <a href="#" data-page="reports" class="nav-link">Reports</a>
                 <a href="#" data-page="dashboard" class="nav-link">Dashboard</a>
@@ -24,66 +24,78 @@
     </header>
 
     <main id="appContent">
-        <!-- Neofly Entry Page -->
-        <section id="page-neofly" class="page active">
-            <h2>Neofly - Vehicle Inspection Entry</h2>
-            <form id="neoflyForm" class="entry-form" autocomplete="off">
-                <div class="form-group">
-                    <label for="nf-orderNo">Order No</label>
-                    <input type="text" id="nf-orderNo" required placeholder="Scan or enter order number">
-                </div>
-                <div class="form-group">
-                    <label for="nf-frameNo">Frame / Chassis Number</label>
-                    <input type="text" id="nf-frameNo" required placeholder="Scan or enter frame/chassis number">
-                </div>
-                <div class="form-group">
-                    <label for="nf-inspector">Person Who Inspected</label>
-                    <input type="text" id="nf-inspector" required placeholder="Enter inspector name">
-                </div>
-                <div class="form-group">
-                    <label for="nf-timestamp">Timestamp of Work Completion</label>
-                    <input type="datetime-local" id="nf-timestamp" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Submit Entry</button>
-            </form>
-            <div id="neofly-confirmation" class="confirmation hidden"></div>
+        <!-- Products Page -->
+        <section id="page-products" class="page">
+            <h2>Products</h2>
+            <div class="products-list" id="productsList"></div>
+            <div class="add-product-section">
+                <h3>Add New Product</h3>
+                <form id="addProductForm" class="entry-form" autocomplete="off">
+                    <div class="form-group">
+                        <label for="new-product-name">Product Name</label>
+                        <input type="text" id="new-product-name" required placeholder="Enter product name">
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Fields</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="field-batteryNo" value="batteryNo"> Battery Serial No
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="field-chargerNo" value="chargerNo"> Battery Charger Serial No
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="field-motorNo" value="motorNo"> Motor Serial No
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Product</button>
+                </form>
+                <div id="product-confirmation" class="confirmation hidden"></div>
+            </div>
         </section>
 
-        <!-- Neobolt Entry Page -->
-        <section id="page-neobolt" class="page">
-            <h2>Neobolt - Vehicle Inspection Entry</h2>
-            <form id="neoboltForm" class="entry-form" autocomplete="off">
+        <!-- Unified Entry Page -->
+        <section id="page-entry" class="page active">
+            <h2>Vehicle Inspection Entry</h2>
+            <form id="entryForm" class="entry-form" autocomplete="off">
                 <div class="form-group">
-                    <label for="nb-orderNo">Order No</label>
-                    <input type="text" id="nb-orderNo" required placeholder="Scan or enter order number">
+                    <label for="entry-product">Product</label>
+                    <select id="entry-product" required>
+                        <option value="">Select product</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label for="nb-frameNo">Frame / Chassis Serial No</label>
-                    <input type="text" id="nb-frameNo" required placeholder="Scan or enter frame/chassis serial number">
+                    <label for="entry-orderNo">Order No</label>
+                    <input type="text" id="entry-orderNo" required placeholder="Scan or enter order number">
                 </div>
                 <div class="form-group">
-                    <label for="nb-batteryNo">Battery Serial No</label>
-                    <input type="text" id="nb-batteryNo" required placeholder="Scan or enter battery serial number">
+                    <label for="entry-frameNo">Frame / Chassis Serial No</label>
+                    <input type="text" id="entry-frameNo" required placeholder="Scan or enter frame/chassis serial number">
+                </div>
+                <div class="form-group entry-extra-field" data-field="batteryNo">
+                    <label for="entry-batteryNo">Battery Serial No</label>
+                    <input type="text" id="entry-batteryNo" placeholder="Scan or enter battery serial number">
+                </div>
+                <div class="form-group entry-extra-field" data-field="chargerNo">
+                    <label for="entry-chargerNo">Battery Charger Serial No</label>
+                    <input type="text" id="entry-chargerNo" placeholder="Scan or enter charger serial number">
+                </div>
+                <div class="form-group entry-extra-field" data-field="motorNo">
+                    <label for="entry-motorNo">Motor Serial No</label>
+                    <input type="text" id="entry-motorNo" placeholder="Scan or enter motor serial number">
                 </div>
                 <div class="form-group">
-                    <label for="nb-chargerNo">Battery Charger Serial No</label>
-                    <input type="text" id="nb-chargerNo" required placeholder="Scan or enter charger serial number">
+                    <label for="entry-inspector">Person Who Inspected</label>
+                    <input type="text" id="entry-inspector" required placeholder="Enter inspector name">
                 </div>
                 <div class="form-group">
-                    <label for="nb-motorNo">Motor Serial No</label>
-                    <input type="text" id="nb-motorNo" required placeholder="Scan or enter motor serial number">
-                </div>
-                <div class="form-group">
-                    <label for="nb-inspector">Person Who Inspected</label>
-                    <input type="text" id="nb-inspector" required placeholder="Enter inspector name">
-                </div>
-                <div class="form-group">
-                    <label for="nb-timestamp">Timestamp of Work Completion</label>
-                    <input type="datetime-local" id="nb-timestamp" required>
+                    <label for="entry-timestamp">Timestamp of Work Completion</label>
+                    <input type="datetime-local" id="entry-timestamp" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Submit Entry</button>
             </form>
-            <div id="neobolt-confirmation" class="confirmation hidden"></div>
+            <div id="entry-confirmation" class="confirmation hidden"></div>
         </section>
 
         <!-- Records Page -->
@@ -260,15 +272,15 @@
                             <label for="edit-frameNo">Frame / Chassis No</label>
                             <input type="text" id="edit-frameNo" required>
                         </div>
-                        <div class="form-group edit-neobolt-field">
+                        <div class="form-group edit-neobolt-field" data-field="batteryNo">
                             <label for="edit-batteryNo">Battery Serial No</label>
                             <input type="text" id="edit-batteryNo">
                         </div>
-                        <div class="form-group edit-neobolt-field">
+                        <div class="form-group edit-neobolt-field" data-field="chargerNo">
                             <label for="edit-chargerNo">Battery Charger Serial No</label>
                             <input type="text" id="edit-chargerNo">
                         </div>
-                        <div class="form-group edit-neobolt-field">
+                        <div class="form-group edit-neobolt-field" data-field="motorNo">
                             <label for="edit-motorNo">Motor Serial No</label>
                             <input type="text" id="edit-motorNo">
                         </div>

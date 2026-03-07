@@ -6,7 +6,13 @@
     // --- Storage Keys ---
     var STORAGE_KEY = 'traceability_records';
     var ADMIN_PW_KEY = 'traceability_admin_pw';
+    var PRODUCTS_KEY = 'traceability_products';
     var DEFAULT_ADMIN_PW = 'admin123';
+
+    var DEFAULT_PRODUCTS = [
+        { id: 'neofly', name: 'Neofly', fields: [] },
+        { id: 'neobolt', name: 'Neobolt', fields: ['batteryNo', 'chargerNo', 'motorNo'] }
+    ];
 
     // --- Data Layer ---
     function getRecords() {
@@ -56,6 +62,48 @@
         localStorage.setItem(ADMIN_PW_KEY, pw);
     }
 
+    // --- Products Data Layer ---
+    function getProducts() {
+        try {
+            var data = localStorage.getItem(PRODUCTS_KEY);
+            if (data) return JSON.parse(data);
+        } catch (e) { /* fall through */ }
+        saveProducts(DEFAULT_PRODUCTS);
+        return DEFAULT_PRODUCTS.slice();
+    }
+
+    function saveProducts(products) {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+    }
+
+    function addProduct(product) {
+        var products = getProducts();
+        product.id = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        // Avoid duplicate IDs
+        var baseId = product.id;
+        var counter = 1;
+        while (products.some(function (p) { return p.id === product.id; })) {
+            product.id = baseId + '_' + counter++;
+        }
+        products.push(product);
+        saveProducts(products);
+        return product;
+    }
+
+    function deleteProduct(productId) {
+        var products = getProducts();
+        products = products.filter(function (p) { return p.id !== productId; });
+        saveProducts(products);
+    }
+
+    function getProductById(productId) {
+        var products = getProducts();
+        for (var i = 0; i < products.length; i++) {
+            if (products[i].id === productId) return products[i];
+        }
+        return null;
+    }
+
     // --- Utility ---
     function formatDate(isoStr) {
         if (!isoStr) return '-';
@@ -85,6 +133,12 @@
         return val;
     }
 
+    function esc(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     // --- QR Code Generation ---
     function generateQRCodeCanvas(text, size) {
         var canvas = document.createElement('canvas');
@@ -112,11 +166,9 @@
             'Order:' + record.orderNo,
             'Frame:' + record.frameNo
         ];
-        if (record.type === 'neobolt') {
-            parts.push('Battery:' + record.batteryNo);
-            parts.push('Charger:' + record.chargerNo);
-            parts.push('Motor:' + record.motorNo);
-        }
+        if (record.batteryNo) parts.push('Battery:' + record.batteryNo);
+        if (record.chargerNo) parts.push('Charger:' + record.chargerNo);
+        if (record.motorNo) parts.push('Motor:' + record.motorNo);
         parts.push('Inspector:' + record.inspector);
         parts.push('Time:' + record.timestamp);
         return parts.join('|');
@@ -139,6 +191,8 @@
         if (mainNav) mainNav.classList.remove('open');
 
         // Refresh data on page show
+        if (pageId === 'entry') populateEntryProductDropdown();
+        if (pageId === 'products') renderProductsList();
         if (pageId === 'records') renderRecords();
         if (pageId === 'reports') { populateInspectorDropdowns(); renderReport(getRecords()); }
         if (pageId === 'dashboard') { populateInspectorDropdowns(); refreshDashboard(); }
@@ -167,49 +221,138 @@
         }
     }
 
-    // --- Neofly Form ---
-    var neoflyForm = document.getElementById('neoflyForm');
-    neoflyForm.addEventListener('submit', function (e) {
+    // --- Products Page ---
+    var FIELD_LABELS = {
+        batteryNo: 'Battery Serial No',
+        chargerNo: 'Battery Charger Serial No',
+        motorNo: 'Motor Serial No'
+    };
+
+    function renderProductsList() {
+        var products = getProducts();
+        var container = document.getElementById('productsList');
+        container.innerHTML = '';
+
+        if (products.length === 0) {
+            container.innerHTML = '<p>No products configured.</p>';
+            return;
+        }
+
+        products.forEach(function (p) {
+            var card = document.createElement('div');
+            card.className = 'product-card';
+            var fields = p.fields.length > 0
+                ? p.fields.map(function (f) { return FIELD_LABELS[f] || f; }).join(', ')
+                : 'No extra fields';
+            card.innerHTML =
+                '<div class="product-info">' +
+                    '<strong>' + esc(p.name) + '</strong>' +
+                    '<span class="product-fields">Fields: Order No, Frame/Chassis No' + (p.fields.length > 0 ? ', ' + esc(fields) : '') + '</span>' +
+                '</div>' +
+                '<button class="btn btn-danger btn-sm product-delete-btn" data-product-id="' + esc(p.id) + '">Delete</button>';
+            container.appendChild(card);
+        });
+
+        // Bind delete buttons
+        container.querySelectorAll('.product-delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pid = this.getAttribute('data-product-id');
+                var product = getProductById(pid);
+                if (!product) return;
+                if (!confirm('Delete product "' + product.name + '"? Existing records of this type will remain but you won\'t be able to create new entries for it.')) return;
+                deleteProduct(pid);
+                renderProductsList();
+                populateEntryProductDropdown();
+            });
+        });
+    }
+
+    var addProductForm = document.getElementById('addProductForm');
+    addProductForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        var record = {
-            type: 'neofly',
-            orderNo: document.getElementById('nf-orderNo').value.trim(),
-            frameNo: document.getElementById('nf-frameNo').value.trim(),
-            batteryNo: '',
-            chargerNo: '',
-            motorNo: '',
-            inspector: document.getElementById('nf-inspector').value.trim(),
-            timestamp: document.getElementById('nf-timestamp').value
-        };
-        addRecord(record);
-        var conf = document.getElementById('neofly-confirmation');
-        conf.textContent = 'Neofly entry saved successfully for Order: ' + record.orderNo;
+        var name = document.getElementById('new-product-name').value.trim();
+        if (!name) return;
+
+        var fields = [];
+        ['batteryNo', 'chargerNo', 'motorNo'].forEach(function (f) {
+            if (document.getElementById('field-' + f).checked) fields.push(f);
+        });
+
+        addProduct({ name: name, fields: fields });
+
+        var conf = document.getElementById('product-confirmation');
+        conf.textContent = 'Product "' + name + '" added successfully.';
         conf.classList.remove('hidden');
-        neoflyForm.reset();
-        setDefaultTimestamp('nf-timestamp');
+        addProductForm.reset();
+        renderProductsList();
+        populateEntryProductDropdown();
         setTimeout(function () { conf.classList.add('hidden'); }, 4000);
     });
 
-    // --- Neobolt Form ---
-    var neoboltForm = document.getElementById('neoboltForm');
-    neoboltForm.addEventListener('submit', function (e) {
+    // --- Unified Entry Form ---
+    function populateEntryProductDropdown() {
+        var products = getProducts();
+        var select = document.getElementById('entry-product');
+        var currentVal = select.value;
+        select.innerHTML = '<option value="">Select product</option>';
+        products.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            select.appendChild(opt);
+        });
+        select.value = currentVal;
+        updateEntryFieldVisibility();
+    }
+
+    function updateEntryFieldVisibility() {
+        var productId = document.getElementById('entry-product').value;
+        var product = productId ? getProductById(productId) : null;
+        var extraFields = document.querySelectorAll('.entry-extra-field');
+
+        extraFields.forEach(function (el) {
+            var fieldName = el.getAttribute('data-field');
+            var visible = product && product.fields.indexOf(fieldName) !== -1;
+            el.style.display = visible ? 'block' : 'none';
+            var input = el.querySelector('input');
+            if (input) {
+                if (visible) {
+                    input.setAttribute('required', 'required');
+                } else {
+                    input.removeAttribute('required');
+                    input.value = '';
+                }
+            }
+        });
+    }
+
+    document.getElementById('entry-product').addEventListener('change', updateEntryFieldVisibility);
+
+    var entryForm = document.getElementById('entryForm');
+    entryForm.addEventListener('submit', function (e) {
         e.preventDefault();
+        var productId = document.getElementById('entry-product').value;
+        var product = getProductById(productId);
+        if (!product) { alert('Please select a product.'); return; }
+
         var record = {
-            type: 'neobolt',
-            orderNo: document.getElementById('nb-orderNo').value.trim(),
-            frameNo: document.getElementById('nb-frameNo').value.trim(),
-            batteryNo: document.getElementById('nb-batteryNo').value.trim(),
-            chargerNo: document.getElementById('nb-chargerNo').value.trim(),
-            motorNo: document.getElementById('nb-motorNo').value.trim(),
-            inspector: document.getElementById('nb-inspector').value.trim(),
-            timestamp: document.getElementById('nb-timestamp').value
+            type: product.id,
+            orderNo: document.getElementById('entry-orderNo').value.trim(),
+            frameNo: document.getElementById('entry-frameNo').value.trim(),
+            batteryNo: product.fields.indexOf('batteryNo') !== -1 ? document.getElementById('entry-batteryNo').value.trim() : '',
+            chargerNo: product.fields.indexOf('chargerNo') !== -1 ? document.getElementById('entry-chargerNo').value.trim() : '',
+            motorNo: product.fields.indexOf('motorNo') !== -1 ? document.getElementById('entry-motorNo').value.trim() : '',
+            inspector: document.getElementById('entry-inspector').value.trim(),
+            timestamp: document.getElementById('entry-timestamp').value
         };
         addRecord(record);
-        var conf = document.getElementById('neobolt-confirmation');
-        conf.textContent = 'Neobolt entry saved successfully for Order: ' + record.orderNo;
+
+        var conf = document.getElementById('entry-confirmation');
+        conf.textContent = product.name + ' entry saved successfully for Order: ' + record.orderNo;
         conf.classList.remove('hidden');
-        neoboltForm.reset();
-        setDefaultTimestamp('nb-timestamp');
+        entryForm.reset();
+        setDefaultTimestamp('entry-timestamp');
+        populateEntryProductDropdown();
         setTimeout(function () { conf.classList.add('hidden'); }, 4000);
     });
 
@@ -217,7 +360,21 @@
     var recordsTypeFilter = document.getElementById('records-type-filter');
     var recordsSearch = document.getElementById('records-search');
 
+    function populateRecordsTypeFilter() {
+        var products = getProducts();
+        var currentVal = recordsTypeFilter.value;
+        recordsTypeFilter.innerHTML = '<option value="all">All Types</option>';
+        products.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name + ' Only';
+            recordsTypeFilter.appendChild(opt);
+        });
+        recordsTypeFilter.value = currentVal;
+    }
+
     function renderRecords() {
+        populateRecordsTypeFilter();
         var records = getRecords();
         var filterType = recordsTypeFilter.value;
         var searchTerm = recordsSearch.value.trim().toLowerCase();
@@ -242,9 +399,11 @@
         noMsg.classList.add('hidden');
 
         filtered.forEach(function (r) {
+            var product = getProductById(r.type);
+            var displayType = product ? product.name : r.type;
             var tr = document.createElement('tr');
             tr.innerHTML =
-                '<td>' + esc(r.type) + '</td>' +
+                '<td>' + esc(displayType) + '</td>' +
                 '<td>' + esc(r.orderNo) + '</td>' +
                 '<td>' + esc(r.frameNo) + '</td>' +
                 '<td>' + esc(r.batteryNo || '-') + '</td>' +
@@ -258,12 +417,6 @@
             qrCell.appendChild(qrCanvas);
             tbody.appendChild(tr);
         });
-    }
-
-    function esc(str) {
-        var div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
     }
 
     recordsTypeFilter.addEventListener('change', renderRecords);
@@ -301,9 +454,11 @@
         noMsg.classList.add('hidden');
 
         records.forEach(function (r) {
+            var product = getProductById(r.type);
+            var displayType = product ? product.name : r.type;
             var tr = document.createElement('tr');
             tr.innerHTML =
-                '<td>' + esc(r.type) + '</td>' +
+                '<td>' + esc(displayType) + '</td>' +
                 '<td>' + esc(r.orderNo) + '</td>' +
                 '<td>' + esc(r.frameNo) + '</td>' +
                 '<td>' + esc(r.batteryNo || '-') + '</td>' +
@@ -379,8 +534,10 @@
         var rows = [headers.map(escapeCSV).join(',')];
 
         data.forEach(function (r) {
+            var product = getProductById(r.type);
+            var displayType = product ? product.name : r.type;
             rows.push([
-                escapeCSV(r.type),
+                escapeCSV(displayType),
                 escapeCSV(r.orderNo),
                 escapeCSV(r.frameNo),
                 escapeCSV(r.batteryNo),
@@ -406,6 +563,7 @@
     // --- Dashboard ---
     function refreshDashboard() {
         var records = getRecords();
+        var products = getProducts();
         var inspectorFilter = document.getElementById('dash-inspector').value;
         var dateFrom = document.getElementById('dash-dateFrom').value;
         var dateTo = document.getElementById('dash-dateTo').value;
@@ -418,10 +576,14 @@
             return true;
         });
 
-        // Summary cards
+        // Summary cards - dynamically based on products
         var totalRecords = filtered.length;
-        var neoflyCount = filtered.filter(function (r) { return r.type === 'neofly'; }).length;
-        var neoboltCount = filtered.filter(function (r) { return r.type === 'neobolt'; }).length;
+        var productCounts = {};
+        products.forEach(function (p) { productCounts[p.id] = 0; });
+        filtered.forEach(function (r) {
+            if (productCounts.hasOwnProperty(r.type)) productCounts[r.type]++;
+            else productCounts[r.type] = (productCounts[r.type] || 0) + 1;
+        });
         var uniqueInspectors = {};
         filtered.forEach(function (r) { uniqueInspectors[r.inspector] = true; });
         var inspectorCount = Object.keys(uniqueInspectors).length;
@@ -429,12 +591,11 @@
         var cardsContainer = document.getElementById('dashboardCards');
         cardsContainer.innerHTML = '';
 
-        var cards = [
-            { value: totalRecords, label: 'Total Inspections' },
-            { value: neoflyCount, label: 'Neofly Entries' },
-            { value: neoboltCount, label: 'Neobolt Entries' },
-            { value: inspectorCount, label: 'Active Inspectors' }
-        ];
+        var cards = [{ value: totalRecords, label: 'Total Inspections' }];
+        products.forEach(function (p) {
+            cards.push({ value: productCounts[p.id] || 0, label: p.name + ' Entries' });
+        });
+        cards.push({ value: inspectorCount, label: 'Active Inspectors' });
 
         cards.forEach(function (c) {
             var div = document.createElement('div');
@@ -443,16 +604,24 @@
             cardsContainer.appendChild(div);
         });
 
-        // Daily breakdown table
+        // Daily breakdown table - dynamic columns
+        var dashTableHead = document.querySelector('#dashboardTable thead tr');
+        dashTableHead.innerHTML = '<th>Inspector</th><th>Date</th>';
+        products.forEach(function (p) {
+            dashTableHead.innerHTML += '<th>' + esc(p.name) + ' Count</th>';
+        });
+        dashTableHead.innerHTML += '<th>Total Inspected</th>';
+
         var breakdown = {};
         filtered.forEach(function (r) {
             var d = dateOnly(r.timestamp);
             var key = r.inspector + '|' + d;
             if (!breakdown[key]) {
-                breakdown[key] = { inspector: r.inspector, date: d, neofly: 0, neobolt: 0 };
+                breakdown[key] = { inspector: r.inspector, date: d, counts: {}, total: 0 };
+                products.forEach(function (p) { breakdown[key].counts[p.id] = 0; });
             }
-            if (r.type === 'neofly') breakdown[key].neofly++;
-            if (r.type === 'neobolt') breakdown[key].neobolt++;
+            if (breakdown[key].counts.hasOwnProperty(r.type)) breakdown[key].counts[r.type]++;
+            breakdown[key].total++;
         });
 
         var rows = Object.keys(breakdown).map(function (k) { return breakdown[k]; });
@@ -467,12 +636,12 @@
 
         rows.forEach(function (row) {
             var tr = document.createElement('tr');
-            tr.innerHTML =
-                '<td>' + esc(row.inspector) + '</td>' +
-                '<td>' + esc(row.date) + '</td>' +
-                '<td>' + row.neofly + '</td>' +
-                '<td>' + row.neobolt + '</td>' +
-                '<td>' + (row.neofly + row.neobolt) + '</td>';
+            var html = '<td>' + esc(row.inspector) + '</td><td>' + esc(row.date) + '</td>';
+            products.forEach(function (p) {
+                html += '<td>' + (row.counts[p.id] || 0) + '</td>';
+            });
+            html += '<td>' + row.total + '</td>';
+            tr.innerHTML = html;
             tbody.appendChild(tr);
         });
     }
@@ -575,11 +744,13 @@
         }
 
         matches.forEach(function (r) {
+            var product = getProductById(r.type);
+            var displayType = product ? product.name : r.type;
             var card = document.createElement('div');
             card.className = 'admin-record-card';
             var info = document.createElement('div');
             info.className = 'admin-record-info';
-            info.innerHTML = '<strong>' + esc(r.type.toUpperCase()) + '</strong> | Order: ' + esc(r.orderNo) +
+            info.innerHTML = '<strong>' + esc(displayType.toUpperCase()) + '</strong> | Order: ' + esc(r.orderNo) +
                 ' | Frame: ' + esc(r.frameNo) + ' | Inspector: ' + esc(r.inspector) +
                 ' | ' + formatDate(r.timestamp);
             var btn = document.createElement('button');
@@ -607,10 +778,17 @@
             document.getElementById('edit-timestamp').value = record.timestamp;
         }
 
-        // Show/hide neobolt fields
+        // Show/hide extra fields based on product config
+        var product = getProductById(record.type);
         var neoboltFields = document.querySelectorAll('.edit-neobolt-field');
         neoboltFields.forEach(function (el) {
-            el.style.display = record.type === 'neobolt' ? 'block' : 'none';
+            var fieldName = el.getAttribute('data-field');
+            if (fieldName && product) {
+                el.style.display = product.fields.indexOf(fieldName) !== -1 ? 'block' : 'none';
+            } else {
+                // Fallback: show for neobolt type
+                el.style.display = record.type === 'neobolt' ? 'block' : 'none';
+            }
         });
 
         document.getElementById('editFormContainer').scrollIntoView({ behavior: 'smooth' });
@@ -644,7 +822,7 @@
     });
 
     // --- Init ---
-    setDefaultTimestamp('nf-timestamp');
-    setDefaultTimestamp('nb-timestamp');
+    setDefaultTimestamp('entry-timestamp');
+    populateEntryProductDropdown();
 
 })();
