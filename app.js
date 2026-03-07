@@ -156,20 +156,34 @@
     // ===========================
     // QR Code
     // ===========================
-    function generateQR(text, size) {
-        var canvas = document.createElement('canvas');
+    function generateQR(text, size, callback) {
+        var s = size || 80;
         if (typeof QRCode !== 'undefined') {
-            QRCode.toCanvas(canvas, text, { width: size || 80, margin: 1 }, function (err) {
-                if (err) canvas.title = 'QR Error';
+            QRCode.toDataURL(String(text), { width: s, margin: 1, errorCorrectionLevel: 'M' }, function (err, url) {
+                if (err || !url) {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = s; canvas.height = s;
+                    var ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, s, s);
+                    ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('QR Error', s / 2, s / 2 + 3);
+                    if (callback) callback(canvas);
+                    return;
+                }
+                var img = document.createElement('img');
+                img.width = s; img.height = s;
+                img.src = url;
+                if (callback) callback(img);
             });
         } else {
-            canvas.width = size || 80; canvas.height = size || 80;
+            var canvas = document.createElement('canvas');
+            canvas.width = s; canvas.height = s;
             var ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, s, s);
             ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('QR N/A', canvas.width / 2, canvas.height / 2 + 3);
+            ctx.fillText('QR N/A', s / 2, s / 2 + 3);
+            if (callback) callback(canvas);
         }
-        return canvas;
     }
 
     // QR Modal
@@ -242,8 +256,71 @@
         return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
     }
 
+    function getAllKnownFields() {
+        var all = [], seen = {};
+        getProducts().forEach(function (p) {
+            (p.fields || []).forEach(function (f) {
+                if (!seen[f.key]) { seen[f.key] = true; all.push({ key: f.key, label: f.label }); }
+            });
+        });
+        return all;
+    }
+
     function renderPendingFields() {
         var container = document.getElementById('customFieldsList');
+        container.innerHTML = '';
+
+        var editId = document.getElementById('edit-product-id').value;
+        if (!editId) {
+            var knownFields = getAllKnownFields();
+            if (knownFields.length > 0) {
+                var cbGroup = document.createElement('div');
+                cbGroup.className = 'checkbox-group existing-fields-checkboxes';
+                var heading = document.createElement('div');
+                heading.style.fontSize = '0.8125rem';
+                heading.style.color = '#444';
+                heading.style.marginBottom = '0.25rem';
+                heading.textContent = 'Select from existing fields:';
+                cbGroup.appendChild(heading);
+
+                knownFields.forEach(function (f) {
+                    var isChecked = pendingFields.some(function (pf) { return pf.key === f.key; });
+                    var lbl = document.createElement('label');
+                    lbl.className = 'checkbox-label';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = isChecked;
+                    cb.setAttribute('data-key', f.key);
+                    cb.setAttribute('data-label', f.label);
+                    cb.addEventListener('change', function () {
+                        var key = this.getAttribute('data-key');
+                        var label = this.getAttribute('data-label');
+                        if (this.checked) {
+                            if (!pendingFields.some(function (pf) { return pf.key === key; })) {
+                                pendingFields.push({ key: key, label: label });
+                            }
+                        } else {
+                            pendingFields = pendingFields.filter(function (pf) { return pf.key !== key; });
+                        }
+                        renderCustomFieldItems();
+                    });
+                    lbl.appendChild(cb);
+                    lbl.appendChild(document.createTextNode(f.label));
+                    cbGroup.appendChild(lbl);
+                });
+                container.appendChild(cbGroup);
+            }
+        }
+
+        var itemsContainer = document.createElement('div');
+        itemsContainer.id = 'customFieldItems';
+        container.appendChild(itemsContainer);
+        renderCustomFieldItems();
+    }
+
+    function renderCustomFieldItems() {
+        var container = document.getElementById('customFieldItems');
+        if (!container) return;
         container.innerHTML = '';
         pendingFields.forEach(function (f, idx) {
             var item = document.createElement('div');
@@ -253,8 +330,13 @@
         });
         container.querySelectorAll('.remove-field-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                pendingFields.splice(parseInt(this.getAttribute('data-idx')), 1);
-                renderPendingFields();
+                var idx = parseInt(this.getAttribute('data-idx'));
+                var removed = pendingFields.splice(idx, 1)[0];
+                var checkboxes = document.querySelectorAll('.existing-fields-checkboxes input[type="checkbox"]');
+                checkboxes.forEach(function (cb) {
+                    if (cb.getAttribute('data-key') === removed.key) cb.checked = false;
+                });
+                renderCustomFieldItems();
             });
         });
     }
@@ -497,11 +579,14 @@
             tr.innerHTML = html;
 
             var qrCell = tr.querySelector('.qr-cell');
-            var qrCanvas = generateQR(r.orderNo, 64);
-            qrCanvas.style.cursor = 'pointer';
-            qrCanvas.title = 'Click to view full details';
-            (function (rec) { qrCanvas.addEventListener('click', function () { showQRModal(rec); }); })(r);
-            qrCell.appendChild(qrCanvas);
+            (function (rec, cell) {
+                generateQR(rec.orderNo, 64, function (el) {
+                    el.style.cursor = 'pointer';
+                    el.title = 'Click to view full details';
+                    el.addEventListener('click', function () { showQRModal(rec); });
+                    cell.appendChild(el);
+                });
+            })(r, qrCell);
             tbody.appendChild(tr);
         });
     }
@@ -694,7 +779,7 @@
         var barCtx = document.getElementById('barChart').getContext('2d');
         barChartInstance = new Chart(barCtx, {
             type: 'bar',
-            data: { labels: barLabels, datasets: [{ label: 'Inspections', data: barData, backgroundColor: '#cc0000', borderRadius: 4 }] },
+            data: { labels: barLabels, datasets: [{ label: 'Inspections', data: barData, backgroundColor: '#2563eb', borderRadius: 4 }] },
             options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 45 } } } }
         });
 
