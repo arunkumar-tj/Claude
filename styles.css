@@ -57,6 +57,17 @@ header {
     min-height: 56px;
 }
 
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-logo {
+    height: 32px;
+    width: auto;
+}
+
 header h1 {
     font-size: 1.25rem;
     font-weight: 600;
