@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neotrace</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -29,27 +30,25 @@
             <h2>Products</h2>
             <div class="products-list" id="productsList"></div>
             <div class="add-product-section">
-                <h3>Add New Product</h3>
+                <h3 id="productFormTitle">Add New Product</h3>
                 <form id="addProductForm" class="entry-form" autocomplete="off">
+                    <input type="hidden" id="edit-product-id" value="">
                     <div class="form-group">
                         <label for="new-product-name">Product Name</label>
                         <input type="text" id="new-product-name" required placeholder="Enter product name">
                     </div>
                     <div class="form-group">
-                        <label>Additional Fields</label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="field-batteryNo" value="batteryNo"> Battery Serial No
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="field-chargerNo" value="chargerNo"> Battery Charger Serial No
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="field-motorNo" value="motorNo"> Motor Serial No
-                            </label>
+                        <label>Child Part Fields</label>
+                        <div id="customFieldsList" class="custom-fields-list"></div>
+                        <div class="add-field-row">
+                            <input type="text" id="new-field-name" placeholder="Enter field name (e.g. Controller Serial No)">
+                            <button type="button" class="btn btn-secondary btn-sm" id="addFieldBtn">Add Field</button>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Product</button>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="productSubmitBtn">Add Product</button>
+                        <button type="button" class="btn btn-secondary hidden" id="cancelProductEdit">Cancel</button>
+                    </div>
                 </form>
                 <div id="product-confirmation" class="confirmation hidden"></div>
             </div>
@@ -73,18 +72,7 @@
                     <label for="entry-frameNo">Frame / Chassis Serial No</label>
                     <input type="text" id="entry-frameNo" required placeholder="Scan or enter frame/chassis serial number">
                 </div>
-                <div class="form-group entry-extra-field" data-field="batteryNo">
-                    <label for="entry-batteryNo">Battery Serial No</label>
-                    <input type="text" id="entry-batteryNo" placeholder="Scan or enter battery serial number">
-                </div>
-                <div class="form-group entry-extra-field" data-field="chargerNo">
-                    <label for="entry-chargerNo">Battery Charger Serial No</label>
-                    <input type="text" id="entry-chargerNo" placeholder="Scan or enter charger serial number">
-                </div>
-                <div class="form-group entry-extra-field" data-field="motorNo">
-                    <label for="entry-motorNo">Motor Serial No</label>
-                    <input type="text" id="entry-motorNo" placeholder="Scan or enter motor serial number">
-                </div>
+                <div id="entryDynamicFields"></div>
                 <div class="form-group">
                     <label for="entry-inspector">Person Who Inspected</label>
                     <input type="text" id="entry-inspector" required placeholder="Enter inspector name">
@@ -187,6 +175,16 @@
                 </div>
             </div>
             <div class="dashboard-cards" id="dashboardCards"></div>
+            <div class="dashboard-charts">
+                <div class="chart-container">
+                    <h3>Inspector Contribution</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Day-wise Production</h3>
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
             <div class="dashboard-detail">
                 <h3>Daily Breakdown</h3>
                 <div class="table-wrapper">
@@ -195,8 +193,6 @@
                             <tr>
                                 <th>Inspector</th>
                                 <th>Date</th>
-                                <th>Neofly Count</th>
-                                <th>Neobolt Count</th>
                                 <th>Total Inspected</th>
                             </tr>
                         </thead>
@@ -243,7 +239,7 @@
                     <button class="btn btn-primary" id="saveNewPassword">Save Password</button>
                     <p id="passwordMsg" class="hidden"></p>
                 </div>
-                <h3>Search Record to Edit</h3>
+                <h3>Search Record to Edit / Delete</h3>
                 <div class="filter-row">
                     <input type="text" id="admin-search" placeholder="Enter order no or frame/chassis no">
                     <button class="btn btn-secondary" id="adminSearchBtn">Search</button>
@@ -261,18 +257,7 @@
                             <label for="edit-frameNo">Frame / Chassis No</label>
                             <input type="text" id="edit-frameNo" required>
                         </div>
-                        <div class="form-group edit-neobolt-field" data-field="batteryNo">
-                            <label for="edit-batteryNo">Battery Serial No</label>
-                            <input type="text" id="edit-batteryNo">
-                        </div>
-                        <div class="form-group edit-neobolt-field" data-field="chargerNo">
-                            <label for="edit-chargerNo">Battery Charger Serial No</label>
-                            <input type="text" id="edit-chargerNo">
-                        </div>
-                        <div class="form-group edit-neobolt-field" data-field="motorNo">
-                            <label for="edit-motorNo">Motor Serial No</label>
-                            <input type="text" id="edit-motorNo">
-                        </div>
+                        <div id="editDynamicFields"></div>
                         <div class="form-group">
                             <label for="edit-inspector">Inspector</label>
                             <input type="text" id="edit-inspector" required>
@@ -290,6 +275,15 @@
             </div>
         </section>
     </main>
+
+    <!-- QR Detail Modal -->
+    <div id="qrModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="qrModalClose">&times;</button>
+            <h3>Record Details</h3>
+            <div id="qrModalBody"></div>
+        </div>
+    </div>
 
     <footer>
         <p>Neotrace &copy; 2026</p>
