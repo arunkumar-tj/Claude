@@ -14,7 +14,7 @@
     --text: #111111;
     --text-light: #444444;
     --border: #cccccc;
-    --success: #222222;
+    --success: #1a7d2f;
     --error: #cc0000;
     --warning: #cc0000;
     --radius: 8px;
@@ -210,11 +210,20 @@ h3 {
 .confirmation {
     margin-top: 1rem;
     padding: 1rem;
-    background: #f9e6e6;
-    border: 1px solid var(--primary);
     border-radius: var(--radius);
-    color: var(--primary);
     font-weight: 500;
+}
+
+.confirmation.confirmation-success {
+    background: #e6f4ea;
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+.confirmation.confirmation-error {
+    background: #f9e6e6;
+    border: 1px solid var(--error);
+    color: var(--error);
 }
 
 /* === Tables === */

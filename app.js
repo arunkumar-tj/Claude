@@ -194,7 +194,7 @@
         if (pageId === 'entry') populateEntryProductDropdown();
         if (pageId === 'products') renderProductsList();
         if (pageId === 'records') renderRecords();
-        if (pageId === 'reports') { populateInspectorDropdowns(); renderReport(getRecords()); }
+        if (pageId === 'reports') renderReport(getRecords());
         if (pageId === 'dashboard') { populateInspectorDropdowns(); refreshDashboard(); }
     }
 
@@ -282,11 +282,11 @@
 
         var conf = document.getElementById('product-confirmation');
         conf.textContent = 'Product "' + name + '" added successfully.';
-        conf.classList.remove('hidden');
+        conf.className = 'confirmation confirmation-success';
         addProductForm.reset();
         renderProductsList();
         populateEntryProductDropdown();
-        setTimeout(function () { conf.classList.add('hidden'); }, 4000);
+        setTimeout(function () { conf.className = 'confirmation hidden'; }, 4000);
     });
 
     // --- Unified Entry Form ---
@@ -328,6 +328,36 @@
 
     document.getElementById('entry-product').addEventListener('change', updateEntryFieldVisibility);
 
+    function showEntryMessage(text, type) {
+        var conf = document.getElementById('entry-confirmation');
+        conf.textContent = text;
+        conf.className = 'confirmation ' + (type === 'success' ? 'confirmation-success' : 'confirmation-error');
+        setTimeout(function () { conf.className = 'confirmation hidden'; }, 5000);
+    }
+
+    function checkDuplicate(record) {
+        var records = getRecords();
+        for (var i = 0; i < records.length; i++) {
+            var r = records[i];
+            if (r.orderNo === record.orderNo && r.frameNo === record.frameNo && r.type === record.type) {
+                return 'Duplicate entry: Order ' + record.orderNo + ' with Frame ' + record.frameNo + ' already exists.';
+            }
+            if (record.frameNo && r.frameNo === record.frameNo && r.type === record.type) {
+                return 'Duplicate Frame/Chassis No: ' + record.frameNo + ' already exists in Order ' + r.orderNo + '.';
+            }
+            if (record.batteryNo && r.batteryNo === record.batteryNo) {
+                return 'Duplicate Battery No: ' + record.batteryNo + ' already exists in Order ' + r.orderNo + '.';
+            }
+            if (record.chargerNo && r.chargerNo === record.chargerNo) {
+                return 'Duplicate Charger No: ' + record.chargerNo + ' already exists in Order ' + r.orderNo + '.';
+            }
+            if (record.motorNo && r.motorNo === record.motorNo) {
+                return 'Duplicate Motor No: ' + record.motorNo + ' already exists in Order ' + r.orderNo + '.';
+            }
+        }
+        return null;
+    }
+
     var entryForm = document.getElementById('entryForm');
     entryForm.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -345,15 +375,18 @@
             inspector: document.getElementById('entry-inspector').value.trim(),
             timestamp: document.getElementById('entry-timestamp').value
         };
-        addRecord(record);
 
-        var conf = document.getElementById('entry-confirmation');
-        conf.textContent = product.name + ' entry saved successfully for Order: ' + record.orderNo;
-        conf.classList.remove('hidden');
+        var dupMsg = checkDuplicate(record);
+        if (dupMsg) {
+            showEntryMessage(dupMsg, 'error');
+            return;
+        }
+
+        addRecord(record);
+        showEntryMessage(product.name + ' entry saved successfully for Order: ' + record.orderNo, 'success');
         entryForm.reset();
         setDefaultTimestamp('entry-timestamp');
         populateEntryProductDropdown();
-        setTimeout(function () { conf.classList.add('hidden'); }, 4000);
     });
 
     // --- Records Page ---
@@ -425,21 +458,19 @@
     // --- Reports Page ---
     function populateInspectorDropdowns() {
         var inspectors = getUniqueInspectors();
-        var rptSelect = document.getElementById('rpt-inspector');
         var dashSelect = document.getElementById('dash-inspector');
 
-        [rptSelect, dashSelect].forEach(function (sel) {
-            if (!sel) return;
-            var currentVal = sel.value;
-            sel.innerHTML = '<option value="">All Inspectors</option>';
+        if (dashSelect) {
+            var currentVal = dashSelect.value;
+            dashSelect.innerHTML = '<option value="">All Inspectors</option>';
             inspectors.forEach(function (name) {
                 var opt = document.createElement('option');
                 opt.value = name;
                 opt.textContent = name;
-                sel.appendChild(opt);
+                dashSelect.appendChild(opt);
             });
-            sel.value = currentVal;
-        });
+            dashSelect.value = currentVal;
+        }
     }
 
     function renderReport(records) {
@@ -475,53 +506,38 @@
 
     var currentReportData = [];
 
-    document.getElementById('filterByOrder').addEventListener('click', function () {
-        var from = document.getElementById('rpt-orderFrom').value.trim().toLowerCase();
-        var to = document.getElementById('rpt-orderTo').value.trim().toLowerCase();
+    function applyReportFilters() {
+        var searchTerm = document.getElementById('rpt-search').value.trim().toLowerCase();
+        var dateFrom = document.getElementById('rpt-dateFrom').value;
+        var dateTo = document.getElementById('rpt-dateTo').value;
         var records = getRecords();
-        if (!from && !to) { renderReport(records); return; }
 
         var filtered = records.filter(function (r) {
-            var order = r.orderNo.toLowerCase();
-            if (from && order < from) return false;
-            if (to && order > to) return false;
+            if (searchTerm) {
+                var haystack = [r.orderNo, r.frameNo, r.batteryNo, r.chargerNo, r.motorNo, r.inspector].join(' ').toLowerCase();
+                if (haystack.indexOf(searchTerm) === -1) return false;
+            }
+            if (dateFrom || dateTo) {
+                var d = dateOnly(r.timestamp);
+                if (dateFrom && d < dateFrom) return false;
+                if (dateTo && d > dateTo) return false;
+            }
             return true;
         });
         renderReport(filtered);
+    }
+
+    document.getElementById('reportSearchBtn').addEventListener('click', applyReportFilters);
+    document.getElementById('rpt-search').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') applyReportFilters();
     });
-
-    document.getElementById('filterByDate').addEventListener('click', function () {
-        var from = document.getElementById('rpt-dateFrom').value;
-        var to = document.getElementById('rpt-dateTo').value;
-        var records = getRecords();
-        if (!from && !to) { renderReport(records); return; }
-
-        var filtered = records.filter(function (r) {
-            var d = dateOnly(r.timestamp);
-            if (from && d < from) return false;
-            if (to && d > to) return false;
-            return true;
-        });
-        renderReport(filtered);
-    });
-
-    document.getElementById('filterByPerson').addEventListener('click', function () {
-        var person = document.getElementById('rpt-inspector').value;
-        var records = getRecords();
-        if (!person) { renderReport(records); return; }
-
-        var filtered = records.filter(function (r) {
-            return r.inspector === person;
-        });
-        renderReport(filtered);
-    });
+    document.getElementById('rpt-dateFrom').addEventListener('change', applyReportFilters);
+    document.getElementById('rpt-dateTo').addEventListener('change', applyReportFilters);
 
     document.getElementById('clearFilters').addEventListener('click', function () {
-        document.getElementById('rpt-orderFrom').value = '';
-        document.getElementById('rpt-orderTo').value = '';
+        document.getElementById('rpt-search').value = '';
         document.getElementById('rpt-dateFrom').value = '';
         document.getElementById('rpt-dateTo').value = '';
-        document.getElementById('rpt-inspector').value = '';
         renderReport(getRecords());
     });
 

@@ -135,11 +135,10 @@
             <h2>Reports</h2>
             <div class="report-filters">
                 <div class="filter-group">
-                    <h3>Filter by Order Number Range</h3>
+                    <h3>Search Records</h3>
                     <div class="filter-row">
-                        <input type="text" id="rpt-orderFrom" placeholder="From order no">
-                        <input type="text" id="rpt-orderTo" placeholder="To order no">
-                        <button class="btn btn-secondary" id="filterByOrder">Apply</button>
+                        <input type="text" id="rpt-search" placeholder="Search by order no, chassis no, battery no, charger no, motor no, inspector...">
+                        <button class="btn btn-primary" id="reportSearchBtn">Search</button>
                     </div>
                 </div>
                 <div class="filter-group">
@@ -147,20 +146,10 @@
                     <div class="filter-row">
                         <input type="date" id="rpt-dateFrom">
                         <input type="date" id="rpt-dateTo">
-                        <button class="btn btn-secondary" id="filterByDate">Apply</button>
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <h3>Filter by Inspector</h3>
-                    <div class="filter-row">
-                        <select id="rpt-inspector">
-                            <option value="">Select inspector</option>
-                        </select>
-                        <button class="btn btn-secondary" id="filterByPerson">Apply</button>
                     </div>
                 </div>
                 <div class="filter-actions">
-                    <button class="btn btn-secondary" id="clearFilters">Clear Filters</button>
+                    <button class="btn btn-secondary" id="clearFilters">Clear All</button>
                     <button class="btn btn-primary" id="downloadCSV">Download CSV</button>
                 </div>
             </div>
