@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Resume Builder</h1>
+    <button id="print-btn" onclick="window.print()">Print / Save PDF</button>
+  </header>
+
+  <div class="container">
+    <!-- Editor Panel -->
+    <aside class="editor">
+      <section>
+        <h2>Personal Info</h2>
+        <label>Full Name<input type="text" id="name" placeholder="Jane Doe" /></label>
+        <label>Job Title<input type="text" id="title" placeholder="Software Engineer" /></label>
+        <label>Email<input type="email" id="email" placeholder="jane@example.com" /></label>
+        <label>Phone<input type="tel" id="phone" placeholder="+1 (555) 000-0000" /></label>
+        <label>Location<input type="text" id="location" placeholder="San Francisco, CA" /></label>
+        <label>LinkedIn / Website<input type="text" id="website" placeholder="linkedin.com/in/janedoe" /></label>
+        <label>Summary<textarea id="summary" rows="3" placeholder="A brief professional summary..."></textarea></label>
+      </section>
+
+      <section>
+        <h2>Experience
+          <button class="add-btn" onclick="addExperience()">+ Add</button>
+        </h2>
+        <div id="experience-list"></div>
+      </section>
+
+      <section>
+        <h2>Education
+          <button class="add-btn" onclick="addEducation()">+ Add</button>
+        </h2>
+        <div id="education-list"></div>
+      </section>
+
+      <section>
+        <h2>Skills</h2>
+        <label>Skills (comma-separated)
+          <textarea id="skills" rows="2" placeholder="JavaScript, React, Python, SQL..."></textarea>
+        </label>
+      </section>
+
+      <section>
+        <h2>Projects
+          <button class="add-btn" onclick="addProject()">+ Add</button>
+        </h2>
+        <div id="project-list"></div>
+      </section>
+    </aside>
+
+    <!-- Preview Panel -->
+    <main class="preview" id="resume-preview">
+      <div class="resume-header">
+        <h1 id="p-name"></h1>
+        <p id="p-title" class="job-title"></p>
+        <div class="contact-row" id="p-contact"></div>
+      </div>
+
+      <div id="p-summary-section" class="resume-section hidden">
+        <h2>Summary</h2>
+        <p id="p-summary"></p>
+      </div>
+
+      <div id="p-experience-section" class="resume-section hidden">
+        <h2>Experience</h2>
+        <div id="p-experience"></div>
+      </div>
+
+      <div id="p-education-section" class="resume-section hidden">
+        <h2>Education</h2>
+        <div id="p-education"></div>
+      </div>
+
+      <div id="p-skills-section" class="resume-section hidden">
+        <h2>Skills</h2>
+        <div id="p-skills" class="skills-grid"></div>
+      </div>
+
+      <div id="p-projects-section" class="resume-section hidden">
+        <h2>Projects</h2>
+        <div id="p-projects"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
